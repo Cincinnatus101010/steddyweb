@@ -3,6 +3,7 @@ export const API_NAV = [
   { id: "return-values", label: "Return values" },
   { id: "options", label: "Options" },
   { id: "global", label: "Global config" },
+  { id: "runtime", label: "Runtime helpers" },
   { id: "mutate", label: "Mutate" },
   { id: "ssr", label: "SSR & prefetch" },
   { id: "infinite", label: "Infinite" },

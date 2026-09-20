@@ -89,7 +89,9 @@ export function DocsPage() {
                   <>
                     Resolved fetcher data, or <Code>undefined</Code> before the first
                     successful settle. With <Code>keepPreviousData</Code>, may show
-                    the previous key until the new key loads.
+                    the previous key until the new key loads. With{" "}
+                    <Code>fallbackData</Code>, shows the placeholder until the first
+                    fetch completes.
                   </>
                 }
               />
@@ -153,14 +155,49 @@ export function DocsPage() {
                 defaultValue="2000"
                 description={
                   <>
-                    Ms after a successful write before mount triggers another{" "}
-                    <Code>revalidate</Code>. In-flight work always aborts and
-                    restarts; this window dedups completed entries unless{" "}
-                    <Code>force: true</Code>.
+                    Dedup window (ms) for mount, focus, reconnect, and manual{" "}
+                    <Code>revalidate</Code> without <Code>force</Code>. In-flight
+                    work always aborts and restarts.
                   </>
                 }
               />
+              <ApiRef
+                name="dedupTime"
+                description="Overrides staleTime for dedup only."
+              />
+              <ApiRef
+                name="refetchInterval"
+                description={
+                  <>
+                    Poll while the hook is subscribed. Each tick{" "}
+                    <Code>force</Code>-revalidates (independent of dedup). Skips
+                    hidden tabs unless <Code>refetchWhenHidden: true</Code>.
+                  </>
+                }
+              />
+              <ApiRef
+                name="refetchWhenHidden"
+                defaultValue="false"
+                description="When true, interval polling runs while the document is hidden."
+              />
+              <ApiRef
+                name="fallbackData"
+                description="Placeholder data until the first fetch settles; does not skip revalidation."
+              />
+              <ApiRef
+                name="onSuccess"
+                description="Hook-only callback after a successful fetch (data, key)."
+              />
+              <ApiRef
+                name="onError"
+                description="Hook-only callback when the fetcher throws (error, key)."
+              />
             </RefPanel>
+            <Callout title="Polling vs dedup">
+              Use a long <Code>staleTime</Code> / <Code>dedupTime</Code> to limit
+              focus/reconnect traffic; <Code>refetchInterval</Code> still polls on
+              schedule.
+            </Callout>
             <Callout title="Plugins are global">
               Focus, reconnect, polling, retry, and TTL mount on the coordinator at
               the app root — not as hook options. See Global configuration.
@@ -211,9 +248,59 @@ export function DocsPage() {
             </RefPanel>
           </ApiSection>
 
-          <ApiSection id="mutate" title="Mutate">
+          <ApiSection id="runtime" title="Runtime helpers">
+            <Typography tone="muted" as="p">
+              <Code>createRuntime()</Code> and <Code>useSteddyRuntime()</Code> expose
+              the same imperative API as the provider cache:
+            </Typography>
             <SampleBlock
-              label="Global mutate"
+              label="useSteddyRuntime"
+              code={`const { revalidate, revalidateMatching, mutate, prefetch, clear } =
+  useSteddyRuntime();
+
+await revalidate(["trains"], { force: true });
+await revalidateMatching(
+  (serialized) => serialized.startsWith('["followed-train"'),
+  { force: true },
+);`}
+            />
+            <RefPanel>
+              <ApiRef
+                name="revalidate(key, options?)"
+                description="Refetch one key. Pass { force: true } to bypass dedup."
+              />
+              <ApiRef
+                name="revalidateMatching(matcher, options?)"
+                description="Refetch every registered key where matcher(serialized, key) is true."
+              />
+              <ApiRef
+                name="prefetch(key, fetcher)"
+                description="Warm cache without a mounted hook."
+              />
+              <ApiRef
+                name="clear(key?)"
+                description="Drop one key or reset the whole cache."
+              />
+            </RefPanel>
+          </ApiSection>
+
+          <ApiSection id="mutate" title="Mutate">
+            <Callout variant="warning" title="Provider vs global mutate">
+              <Code>import {"{ mutate }"} from "steddy"</Code> uses the module default
+              cache. With <Code>SteddyProvider</Code>, use hook{" "}
+              <Code>mutate</Code>, <Code>useSteddyRuntime().mutate</Code>, or{" "}
+              <Code>createMutate(store, coordinator)</Code> on the same runtime.
+            </Callout>
+            <SampleBlock
+              label="Runtime mutate"
+              code={`const { mutate } = useSteddyRuntime();
+
+await mutate(["user", id], (current) => ({ ...current, name: "Ada" }), {
+  revalidate: true,
+});`}
+            />
+            <SampleBlock
+              label="Global mutate (default cache only)"
               code={`import { mutate } from "steddy";
 
 await mutate(["user", id], (current) => ({ ...current, name: "Ada" }), {
@@ -254,14 +341,22 @@ await mutate(["user", id], (current) => ({ ...current, name: "Ada" }), {
                 description="Restore dump timestamps so dedup can skip an immediate refetch."
               />
               <ApiRef
-                name="prefetch(key, fetcher, runtime)"
-                description="Warm a key without mounting a hook."
+                name="prefetch(key, fetcher, runtime?)"
+                description="Warm a key without mounting a hook. Prefer runtime.prefetch on createRuntime()."
               />
               <ApiRef
-                name="clear(key?, runtime)"
+                name="clear(key?, runtime?)"
                 description="Drop one key or reset the cache; aborts in-flight work."
               />
+              <ApiRef
+                name="useSteddyRuntime()"
+                description="Returns mutate, revalidate, revalidateMatching, prefetch, clear for the active provider."
+              />
             </RefPanel>
+            <Callout title="Next.js">
+              See the steddy repo <Code>docs/nextjs.md</Code> and MCP topic{" "}
+              <Code>nextjs</Code> for App Router layout + hydrate flow.
+            </Callout>
           </ApiSection>
 
           <ApiSection id="infinite" title="useSteddyInfinite">
@@ -308,7 +403,7 @@ await mutate(["user", id], (current) => ({ ...current, name: "Ada" }), {
               />
               <ApiRef
                 name="steddy_get_topic"
-                description="Full markdown for one topic."
+                description="Full markdown (setup, hooks, nextjs, mutations, debugging, …)."
               />
               <ApiRef
                 name="steddy_search_docs"
